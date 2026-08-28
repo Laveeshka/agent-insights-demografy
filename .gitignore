@@ -1,0 +1,18 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+
+# Virtual environments
+venv/
+.venv/
+
+# Streamlit and env
+.env
+.streamlit/secrets.toml
+
+# BigQuery service account
+*.json
+
+# OS
+.DS_Store
