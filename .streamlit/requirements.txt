@@ -1,4 +1,0 @@
-streamlit
-langchain
-google-cloud-bigquery
-langchain-google-genai
