@@ -2,3 +2,6 @@ streamlit
 langchain
 google-cloud-bigquery
 langchain-google-genai
+langchain-community
+sqlalchemy-bigquery
+dotenv
