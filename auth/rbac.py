@@ -1,13 +1,34 @@
-"""RBAC helpers for tier lookup.
+TIER_LIMITS = {
+    "free": 5,
+    "basic": 20,
+    "pro": 50
+}
 
-Lookup the `tier` for a given `user_id` from `demografy.ref_tables.dev_customers`.
-"""
 
-def get_user_tier(user_id, client=None):
-    """Return the tier for user_id.
-
-    Placeholder: query the dev_customers table using `client` (BigQuery wrapper).
-    For now, return 'free' as a default.
+def get_question_limit(tier):
     """
-    # TODO: implement real lookup
-    return "free"
+    Return the maximum number of questions allowed
+    for the customer's subscription tier.
+    """
+
+    return TIER_LIMITS.get(tier.lower(), 5)
+
+
+def get_questions_remaining(tier, questions_used):
+    """
+    Calculate how many questions the customer
+    has left in the current browser session.
+    """
+
+    limit = get_question_limit(tier)
+
+    return max(limit - questions_used, 0)
+
+
+def can_ask_question(tier, questions_used):
+    """
+    Return True if the customer still has
+    questions available.
+    """
+
+    return get_questions_remaining(tier, questions_used) > 0
