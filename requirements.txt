@@ -1,6 +1,7 @@
 streamlit
 langchain
 google-cloud-bigquery
+google-cloud-bigquery-storage
 langchain-google-genai
 langchain-community
 sqlalchemy-bigquery

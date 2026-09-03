@@ -5,6 +5,28 @@ from auth.rbac import (
     get_questions_remaining,
     can_ask_question
 )
+from agent.sql_agent import create_demografy_agent
+
+# Instantiate the Demografy agent at startup (eager creation).
+# Store it in session_state so it survives Streamlit reruns.
+try:
+    if "demografy_agent" not in st.session_state:
+        st.session_state.demografy_agent = create_demografy_agent()
+except ModuleNotFoundError as e:
+    # Missing dependencies — keep a None placeholder and let the handler
+    # show a helpful message when a user asks a question.
+    st.session_state.demografy_agent = None
+    st.session_state.demografy_agent_error = (
+        "The SQL agent dependencies are not installed. "
+        "Run `pip install -r requirements.txt` in your virtualenv. "
+        f"Details: {e}"
+    )
+except Exception as e:
+    st.session_state.demografy_agent = None
+    st.session_state.demografy_agent_error = (
+        "Failed to create the Demografy agent at startup: "
+        f"{e}"
+    )
 
 
 # ---------------------------------------------------
@@ -272,16 +294,44 @@ if user_question:
 
 
     # -----------------------------------------------
-    # TEMPORARY RESPONSE
-    #
-    # Later LangChain / Gemini will replace this.
+    # RUN SQL AGENT
+    # Use the LangChain SQL agent to answer the question.
+    # Create the agent lazily to avoid startup cost when not needed.
     # -----------------------------------------------
 
-    response = (
-        "Thanks for your question. "
-        "The Demografy data agent will process "
-        "this question once the AI agent is connected."
-    )
+    agent = st.session_state.get("demografy_agent")
+
+    if agent is None:
+        # Startup failed earlier — show captured error or a generic message.
+        response = st.session_state.get(
+            "demografy_agent_error",
+            "The Demografy data agent is not available."
+        )
+    else:
+        try:
+            # AgentExecutor / LangChain agents expose a simple `run` method.
+            response = agent.run(user_question)
+        except Exception as e:
+            response = (
+                "Sorry — the data agent failed to answer your question. "
+                f"Error: {e}"
+            )
+
+    # Normalize agent responses into a readable string for the UI.
+    def _format_agent_response(r):
+        if isinstance(r, list):
+            out = []
+            for item in r:
+                if isinstance(item, dict) and "text" in item:
+                    out.append(item["text"])
+                else:
+                    out.append(str(item))
+            return "\n\n".join(out)
+        if isinstance(r, dict):
+            return r.get("text") or r.get("output") or str(r)
+        return str(r)
+
+    response = _format_agent_response(response)
 
 
     # Add assistant response
