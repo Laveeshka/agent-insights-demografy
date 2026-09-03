@@ -3,6 +3,11 @@
 import os
 
 from langchain_google_genai import ChatGoogleGenerativeAI
+from dotenv import load_dotenv
+
+# Load .env so local development credentials (GOOGLE_APPLICATION_CREDENTIALS)
+# and GEMINI_API_KEY are available when running locally.
+load_dotenv()
 
 from agent.prompts import FEW_SHOT_PREFIX
 from agent.tools import (
@@ -21,7 +26,6 @@ class SQLAgent:
     access. This agent owns prompting, validation, bounded repair, and answer
     generation, keeping the backend independent from Streamlit.
     """
-
     # Restrict generated queries to the approved data source.
     TABLE_NAME = "prod_tables.a_master_view"
     # Keep the result context small enough for reliable LLM responses.
