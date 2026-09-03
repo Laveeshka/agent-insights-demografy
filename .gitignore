@@ -9,10 +9,17 @@ venv/
 
 # Streamlit and env
 .env
+.env.*
+!.env.example
 .streamlit/secrets.toml
 
 # BigQuery service account
 *.json
+*.key
+*.pem
+*.p12
+credentials/
+secrets/
 
 # OS
 .DS_Store

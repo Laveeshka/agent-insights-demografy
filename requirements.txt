@@ -4,4 +4,4 @@ google-cloud-bigquery
 langchain-google-genai
 langchain-community
 sqlalchemy-bigquery
-dotenv
+python-dotenv
