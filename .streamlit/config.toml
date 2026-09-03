@@ -1,8 +1,8 @@
 # Placeholder theme values — replace with Demografy branding (hex colours, fonts)
 # Copy brand colours and fonts into this file to style the Streamlit UI.
 [theme]
-primaryColor="#090a0a"
+primaryColor="#ffffff"
 backgroundColor="#ffffff"
 secondaryBackgroundColor="#ffffff"
-textColor="#0c0b0b"
+textColor="#000000"
 font="sans serif"
