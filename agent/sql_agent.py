@@ -1,6 +1,7 @@
 """Gemini-backed SQL insight agent with an injected BigQuery boundary."""
 
 import os
+import re
 
 from langchain_google_genai import ChatGoogleGenerativeAI
 from dotenv import load_dotenv
@@ -67,8 +68,16 @@ class SQLAgent:
                 return result
 
             # Reject unsafe SQL before it can reach BigQuery.
-            if not validate_read_only_sql(sql):
-                error = "Generated SQL is empty, unsafe, or not a single read-only SELECT."
+            sql = self._enforce_row_limit(sql)
+            if not validate_read_only_sql(
+                sql,
+                required_table=f"demografy.{self.TABLE_NAME}",
+                require_column_aliases=True,
+            ):
+                error = (
+                    "Generated SQL is empty, unsafe, missing the approved fully "
+                    "qualified table, or missing descriptive column aliases."
+                )
                 if attempt == 0:
                     continue
                 result["error"] = error
@@ -148,9 +157,27 @@ class SQLAgent:
         return (
             "Answer the user using only the actual database result below. "
             "Do not invent values, preserve important numbers, state clearly "
-            "when no rows were returned, and be concise.\n\n"
+            "when no rows were returned, and be concise. Return text only, "
+            "with no charts, code blocks, or machine-readable JSON. If the "
+            "user requested more than 50 rows, explain that results are capped "
+            "at 50 and suggest narrowing the query with filters.\n\n"
             f"User question: {question}\n\nDatabase result:\n{formatted_rows}"
         )
+
+    def _enforce_row_limit(self, sql: str) -> str:
+        """Add or reduce the outer query LIMIT so no more than 50 rows are queried."""
+        # Enforce the database-side cap before execution, not only in the LLM context.
+        terminal_semicolon = ";" if sql.rstrip().endswith(";") else ""
+        body = sql.rstrip().rstrip(";").rstrip()
+        limits = list(re.finditer(r"\bLIMIT\s+(\d+)\b", body, re.IGNORECASE))
+        if limits:
+            match = limits[-1]
+            requested_limit = int(match.group(1))
+            if requested_limit <= self.MAX_RESULT_ROWS:
+                return sql
+            body = f"{body[:match.start(1)]}{self.MAX_RESULT_ROWS}{body[match.end(1):]}"
+            return body + terminal_semicolon
+        return f"{body}\nLIMIT {self.MAX_RESULT_ROWS}{terminal_semicolon}"
 
     def _invoke(self, prompt: str) -> str:
         # Normalize Gemini response objects into plain text for the backend result.

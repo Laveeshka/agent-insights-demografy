@@ -46,8 +46,12 @@ def clean_generated_sql(raw_sql: str) -> str:
     return sql
 
 
-def validate_read_only_sql(sql: str) -> bool:
-    """Return whether SQL is a single, obviously read-only query."""
+def validate_read_only_sql(
+    sql: str,
+    required_table: str | None = None,
+    require_column_aliases: bool = False,
+) -> bool:
+    """Return whether SQL meets the configured read-only query constraints."""
     # Enforce a runtime read-only boundary because prompt instructions are not security controls.
     statement = str(sql or "").strip()
     if not statement:
@@ -65,7 +69,83 @@ def validate_read_only_sql(sql: str) -> bool:
         return False
 
     blocked = r"\b(INSERT|UPDATE|DELETE|DROP|ALTER|CREATE|TRUNCATE|MERGE)\b"
-    return re.search(blocked, without_terminal_semicolon, re.IGNORECASE) is None
+    if re.search(blocked, without_terminal_semicolon, re.IGNORECASE):
+        return False
+
+    if required_table and not _uses_required_table(without_terminal_semicolon, required_table):
+        return False
+
+    if require_column_aliases and not _has_column_aliases(without_terminal_semicolon):
+        return False
+
+    return True
+
+
+def _uses_required_table(sql: str, required_table: str) -> bool:
+    """Require the approved fully qualified table in the query."""
+    # Accept optional BigQuery identifier quoting while requiring the exact path.
+    table_pattern = re.escape(required_table).replace(r"\.", r"\s*\.\s*")
+    return re.search(rf"(?<![\w.])`?{table_pattern}`?(?![\w.])", sql, re.IGNORECASE) is not None
+
+
+def _has_column_aliases(sql: str) -> bool:
+    """Require explicit aliases for every selected expression."""
+    select_list = _top_level_select_list(sql)
+    if select_list is None:
+        return False
+
+    expressions = _split_sql_list(select_list)
+    if not expressions:
+        return False
+    return all(re.search(r"\s+AS\s+[A-Za-z_][\w]*\s*$", expression, re.IGNORECASE) for expression in expressions)
+
+
+def _top_level_select_list(sql: str) -> str | None:
+    """Return the outermost SELECT list without parsing SQL dialects fully."""
+    depth = 0
+    select_start = None
+    from_start = None
+    tokens = re.finditer(r"`[^`]*`|'(?:''|[^'])*'|\bSELECT\b|\bFROM\b|[()]", sql, re.IGNORECASE)
+    for match in tokens:
+        token = match.group(0)
+        if token.startswith(("`", "'")):
+            continue
+        if token == "(":
+            depth += 1
+        elif token == ")":
+            depth = max(0, depth - 1)
+        elif depth == 0 and token.upper() == "SELECT" and select_start is None:
+            select_start = match.end()
+        elif depth == 0 and token.upper() == "FROM" and select_start is not None:
+            from_start = match.start()
+            break
+    if select_start is None or from_start is None:
+        return None
+    return sql[select_start:from_start].strip()
+
+
+def _split_sql_list(value: str) -> list[str]:
+    """Split comma-separated SQL expressions while ignoring nested commas."""
+    expressions = []
+    start = 0
+    depth = 0
+    quote = None
+    for index, character in enumerate(value):
+        if quote:
+            if character == quote and (index == 0 or value[index - 1] != "\\"):
+                quote = None
+            continue
+        if character in ("'", '"', '`'):
+            quote = character
+        elif character == "(":
+            depth += 1
+        elif character == ")":
+            depth = max(0, depth - 1)
+        elif character == "," and depth == 0:
+            expressions.append(value[start:index].strip())
+            start = index + 1
+    expressions.append(value[start:].strip())
+    return [expression for expression in expressions if expression]
 
 
 def limit_query_results(rows: Iterable, max_rows: int = 50) -> list:

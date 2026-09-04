@@ -23,13 +23,29 @@ class BigQueryClient:
 
         self.client = bigquery.Client(project=self.project) if self.project else bigquery.Client()
 
-    def query(self, sql: str, timeout: int = 30) -> list[object]:
-        """Execute SQL and return result rows as a list.
+    def query(
+        self,
+        sql: str,
+        timeout: int = 30,
+        query_parameters: list[object] | None = None,
+    ) -> list[object]:
+        """Execute SQL with optional named or positional query parameters.
 
         Raises: exceptions from the BigQuery client on failure.
         """
-        query_job = self.client.query(sql, timeout=timeout)
-        return list(query_job.result())
+        if not sql or not sql.strip():
+            raise ValueError("sql must not be empty")
+
+        query_kwargs: dict[str, object] = {"timeout": timeout}
+        if query_parameters is not None:
+            query_kwargs["job_config"] = bigquery.QueryJobConfig(
+                query_parameters=query_parameters,
+                use_legacy_sql=False,
+            )
+
+        # Query parameters keep user-provided values out of the SQL string.
+        query_job = self.client.query(sql, **query_kwargs)
+        return list(query_job.result(timeout=timeout))
 
     def list_tables(self, dataset: str) -> Iterable[str]:
         """List table IDs in a dataset (e.g. 'prod_tables')."""
