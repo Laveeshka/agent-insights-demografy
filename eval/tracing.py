@@ -10,7 +10,10 @@ This keeps imports safe and ensures tracing is opt-in via env.
 """
 from typing import Any, Dict, Optional
 import os
-import langsmith
+try:
+    import langsmith
+except Exception:
+    langsmith = None
 
 class _NoopTracer:
     enabled = False
@@ -25,29 +28,32 @@ class _Tracer:
         self.enabled = True
 
     def record(self, event: str, payload: Dict[str, Any]) -> Optional[Any]:
-        created = None
-        try:
-            if hasattr(self.client, "create_trace"):
-                created = self.client.create_trace(name=event, data=payload)
-            elif hasattr(self.client, "log"):
-                created = self.client.log(event, payload)
-            elif hasattr(self.client, "create_run"):
-                try:
-                    created = self.client.create_run(name=event, inputs=payload, run_type="tool")
-                except Exception:
-                    try:
-                        created = self.client.create_run(event, payload, "tool")
-                    except Exception:
-                        created = None
-            elif hasattr(self.client, "create"):
-                try:
-                    created = self.client.create(name=event, data=payload)
-                except Exception:
-                    created = None
-        except Exception:
-            created = None
+        # Build an ordered list of callables to attempt.  
+        attempts = []
 
-        return created
+        if hasattr(self.client, "create_trace"):
+            attempts.append(lambda: self.client.create_trace(name=event, data=payload))
+
+        if hasattr(self.client, "log"):
+            attempts.append(lambda: self.client.log(event, payload))
+
+        if hasattr(self.client, "create_run"):
+            # Try common create_run call shapes (keyword and positional).
+            attempts.append(lambda: self.client.create_run(name=event, inputs=payload, run_type="tool"))
+            attempts.append(lambda: self.client.create_run(event, payload, "tool"))
+
+        if hasattr(self.client, "create"):
+            attempts.append(lambda: self.client.create(name=event, data=payload))
+            attempts.append(lambda: self.client.create(event, payload))
+
+        for fn in attempts:
+            try:
+                return fn()
+            except Exception:
+                # Ignore and try the next candidate; tracing is best-effort.
+                continue
+
+        return None
 
 
 def _is_truthy(value: Optional[str]) -> bool:
