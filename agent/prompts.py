@@ -21,6 +21,80 @@ KEY COLUMN MAPPINGS:
 - "household mobility" = kpi_9_val (0-1)
 - "young family" = kpi_10_val (0-100%)
 
-Rules: Always use fully qualified table names. Limit to 50 rows max. Use descriptive column aliases. Never run DELETE, UPDATE, INSERT, or DROP.'''
+STATE ABBREVIATIONS:
+- VIC = Victoria
+- SA = South Australia
+- TAS = Tasmania
+- QLD = Queensland
+- NSW = New South Wales
+- WA = Western Australia
+- NT = Northern Territory
+
+Rules: Always use fully qualified table names. Limit to 50 rows max. Use descriptive column aliases.
+Alias every selected expression using `AS <descriptive_name>` — every item in the outer SELECT list must include an `AS` alias. Never run DELETE, UPDATE, INSERT, or DROP.
+
+EXAMPLE QUERIES:
+Q: Top 3 most diverse suburbs in Victoria
+SQL: SELECT
+	sa2_name AS suburb,
+	state AS state_name,
+	kpi_2_val AS diversity_index
+FROM
+	`demografy.prod_tables.a_master_view`
+WHERE
+	state = 'Victoria'
+	AND sa2_name IS NOT NULL
+	AND kpi_2_val IS NOT NULL
+ORDER BY
+	diversity_index DESC
+LIMIT 3;
+
+Q: Average prosperity score in New South Wales
+SQL: SELECT
+	AVG(kpi_1_val) AS avg_prosperity_score
+FROM
+	`demografy.prod_tables.a_master_view`
+WHERE
+	state = 'New South Wales';
+
+Q: Suburbs with high young family presence (over 25%) and high learning level (over 70%)
+SQL: SELECT
+	sa2_name AS suburb,
+	state AS state_name,
+	kpi_10_val AS young_family_pct,
+	kpi_4_val AS learning_level
+FROM
+	`demografy.prod_tables.a_master_view`
+WHERE
+	kpi_10_val > 25
+	AND kpi_4_val > 70
+ORDER BY
+	kpi_10_val DESC
+LIMIT 20;
+
+Q: Most stable suburbs (highest resident anchor) in Queensland
+SQL: SELECT
+	sa2_name AS suburb,
+	kpi_8_val AS resident_anchor
+FROM
+	`demografy.prod_tables.a_master_view`
+WHERE
+	state = 'Queensland'
+ORDER BY
+	resident_anchor DESC
+LIMIT 10;
+
+Q: Compare home ownership vs rental access by state
+SQL: SELECT
+	state AS state_name,
+	AVG(kpi_6_val) AS avg_resident_equity,
+	AVG(kpi_7_val) AS avg_rental_access
+FROM
+	`demografy.prod_tables.a_master_view`
+GROUP BY
+	state
+ORDER BY
+	avg_resident_equity DESC;
+'''
 
 
