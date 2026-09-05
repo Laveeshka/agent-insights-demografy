@@ -9,6 +9,7 @@ from auth.users import authenticate_user
 
 from db.bigquery_client import BigQueryClient
 from agent.sql_agent import create_demografy_agent
+from agent.tools import map_agent_result_to_message
 
 # ---------------------------------------------------
 # PAGE CONFIGURATION
@@ -363,9 +364,11 @@ if user_question:
     # Ask the SQL agent and display the result
     try:
         result = st.session_state.agent.answer_question(user_question)
-        answer_text = result.get("answer") or result.get("error") or "No answer available."
     except Exception as exc:
-        answer_text = f"Agent error: {exc}"
+        result = {"answer": None, "sql": None, "rows": [], "error": f"Agent error: {exc}"}
+
+    # Map internal errors / empty results to human-friendly messages
+    answer_text = map_agent_result_to_message(result)
 
     st.session_state.messages.append({"role": "assistant", "content": answer_text})
 

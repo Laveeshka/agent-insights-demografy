@@ -179,3 +179,70 @@ def format_query_results(rows: Iterable) -> str:
             except (TypeError, ValueError):
                 formatted.append(str(row))
     return json.dumps(formatted, default=str, ensure_ascii=False)
+
+
+def map_agent_result_to_message(result: dict) -> str:
+    """Map an agent result dict to a human-friendly message for UI display.
+
+    Expected `result` keys: 'answer', 'sql', 'rows', 'error'. This centralizes
+    the UI-friendly mapping so other callers (tests, CLI, UI) can reuse it.
+    """
+    if not isinstance(result, dict):
+        return str(result or "Sorry, something went wrong.")
+
+    raw_error = (result.get("error") or "")
+    rows = result.get("rows") or []
+
+    if raw_error:
+        lower_err = raw_error.lower()
+        if "generated sql is empty" in lower_err or "missing the approved fully qualified table" in lower_err or "missing descriptive column aliases" in lower_err:
+            return (
+                "I can only answer questions about Demografy's dataset (suburbs, states, and KPI columns). "
+                "Try asking something like: 'Top 3 diverse suburbs in VIC' or include a state and KPI name."
+            )
+        if "bigquery query failed" in lower_err:
+            short = raw_error.split(":", 1)[-1].strip() if ":" in raw_error else raw_error
+            return f"There was a problem running the database query: {short}. Please try again later."
+        if "sql generation failed" in lower_err:
+            return (
+                "I couldn't generate a safe SQL query for that question. Try rephrasing the question to reference suburbs, states, or KPI names."
+            )
+        if "answer generation failed" in lower_err:
+            return "I couldn't generate a natural-language answer from the query results. Please try again."
+        return f"Sorry, I couldn't answer that: {raw_error}"
+
+    # No raw error. If the query returned no rows, show helpful guidance.
+    if not rows:
+        return (
+            "No rows returned. There may be no matching data for that query. "
+            "Try broadening filters, checking the state/suburb spelling, or removing restrictive conditions."
+        )
+
+    return result.get("answer") or "No answer available."
+
+
+def normalize_assistant_message(content: str) -> str:
+    """Convert previously stored assistant message text into the current
+    user-friendly form when possible.
+
+    This helps when `st.session_state.messages` contains legacy raw LLM
+    outputs (e.g. 'No rows returned.') so the UI shows the mapped, helpful
+    guidance without requiring a session restart.
+    """
+    if not isinstance(content, str) or not content:
+        return content
+
+    lower = content.lower().strip()
+    # Known legacy phrasing for empty results
+    if "no rows returned" in lower or "no rows were returned" in lower:
+        return map_agent_result_to_message({"rows": []})
+
+    # Known legacy validation error text
+    if (
+        "generated sql is empty" in lower
+        or "missing the approved fully qualified table" in lower
+        or "missing descriptive column aliases" in lower
+    ):
+        return map_agent_result_to_message({"error": content})
+
+    return content
