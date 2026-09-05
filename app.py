@@ -5,8 +5,10 @@ from auth.rbac import (
     get_questions_remaining,
     can_ask_question
 )
+from auth.users import authenticate_user
 
-from auth.users import validate_user
+from db.bigquery_client import BigQueryClient
+from agent.sql_agent import create_demografy_agent
 
 # ---------------------------------------------------
 # PAGE CONFIGURATION
@@ -118,16 +120,29 @@ if not st.session_state.logged_in:
             st.warning("Please enter your User ID.")
 
         else:
-            user = validate_user(user_id.strip())
+            # Create BigQuery client and authenticate the user
+            try:
+                bq_client = BigQueryClient()
+            except Exception as exc:
+                st.error(f"Unable to initialize BigQuery client: {exc}")
+                st.stop()
 
-            if user is None:
-                st.error("User not found or account is inactive.")
+            auth_result = authenticate_user(user_id.strip(), bq_client)
 
+            if not auth_result.get("authenticated"):
+                st.error(auth_result.get("error") or "User not found or account is inactive.")
             else:
+                # Store a simple user snapshot for the session (user_id + tier)
                 st.session_state.logged_in = True
-                st.session_state.user = user
+                st.session_state.user = {
+                    "user_id": auth_result.get("user_id"),
+                    "tier": auth_result.get("tier"),
+                }
                 st.session_state.questions_used = 0
                 st.session_state.messages = []
+                # Keep client and agent in session state for reuse
+                st.session_state.bigquery_client = bq_client
+                st.session_state.agent = create_demografy_agent(bq_client)
 
                 st.rerun()
 
@@ -146,7 +161,6 @@ customer_tier = st.session_state.user["tier"]
 current_user = st.session_state.user
 
 user_id = current_user["user_id"]
-email = current_user["email"]
 customer_tier = current_user["tier"]
 
 
@@ -183,9 +197,7 @@ with st.sidebar:
 
     st.write("Signed in as")
 
-    st.write(
-        f"**{st.session_state.user['email']}**"
-    )
+    st.write(f"**{st.session_state.user['user_id']}**")
 
     st.caption(
         f"User ID: {st.session_state.user['user_id']}"
@@ -329,67 +341,36 @@ user_question = st.chat_input(
 
 if user_question:
 
-    st.session_state.messages.append(
-        {
-            "role": "user",
-            "content": user_question
-        }
-    )
+    st.session_state.messages.append({"role": "user", "content": user_question})
 
     with st.chat_message("user"):
         st.write(user_question)
 
+    # Ensure BigQuery client and agent exist in the session
+    if "bigquery_client" not in st.session_state:
+        try:
+            st.session_state.bigquery_client = BigQueryClient()
+        except Exception as exc:
+            st.error(f"Unable to initialize BigQuery client: {exc}")
+            st.stop()
+
+    if "agent" not in st.session_state:
+        st.session_state.agent = create_demografy_agent(st.session_state.bigquery_client)
+
+    # Count the question
     st.session_state.questions_used += 1
 
-    response = (
-        "Thanks for your question. "
-        "The Demografy data agent will process this question "
-        "once the AI agent is connected."
-    )
+    # Ask the SQL agent and display the result
+    try:
+        result = st.session_state.agent.answer_question(user_question)
+        answer_text = result.get("answer") or result.get("error") or "No answer available."
+    except Exception as exc:
+        answer_text = f"Agent error: {exc}"
 
-    st.session_state.messages.append(
-        {
-            "role": "assistant",
-            "content": response
-        }
-    )
+    st.session_state.messages.append({"role": "assistant", "content": answer_text})
 
     with st.chat_message("assistant"):
-        st.write(response)
-
-    st.rerun()
-    
-    # -----------------------------------------------
-    # COUNT THE QUESTION
-    # -----------------------------------------------
-
-    st.session_state.questions_used += 1
-
-
-    # -----------------------------------------------
-    # TEMPORARY RESPONSE
-    #
-    # Later LangChain / Gemini will replace this.
-    # -----------------------------------------------
-
-    response = (
-        "Thanks for your question. "
-        "The Demografy data agent will process "
-        "this question once the AI agent is connected."
-    )
-
-
-    # Add assistant response
-    st.session_state.messages.append(
-        {
-            "role": "assistant",
-            "content": response
-        }
-    )
-
-    with st.chat_message("assistant"):
-        st.write(response)
-
+        st.write(answer_text)
 
     # Refresh the page so sidebar counter changes
     st.rerun()
