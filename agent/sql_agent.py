@@ -240,7 +240,5 @@ def create_demografy_agent(bigquery_client, llm=None):
     if llm is None:
         llm = ChatGoogleGenerativeAI(
             model="gemini-3.5-flash-lite",
-            google_api_key=os.getenv("GEMINI_API_KEY"),
-            temperature=0,
-        )
+            google_api_key=os.getenv("GEMINI_API_KEY")        )
     return SQLAgent(bigquery_client, llm)
