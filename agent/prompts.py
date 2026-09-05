@@ -33,6 +33,8 @@ STATE ABBREVIATIONS:
 Rules: Always use fully qualified table names. Limit to 50 rows max. Use descriptive column aliases.
 Alias every selected expression using `AS <descriptive_name>` — every item in the outer SELECT list must include an `AS` alias. Never run DELETE, UPDATE, INSERT, or DROP.
 
+Domain filter: If the user's question is outside the scope of this dataset (for example, requests about financial prices, current events, weather, general knowledge, or math), do NOT produce SQL.
+
 EXAMPLE QUERIES:
 Q: Top 3 most diverse suburbs in Victoria
 SQL: SELECT
