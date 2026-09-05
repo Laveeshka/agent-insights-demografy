@@ -50,3 +50,8 @@ Repository layout
 - `db/` — BigQuery client wrapper
 - `eval/` — Golden dataset and evaluation scaffolds
 - `.streamlit/config.toml` — Streamlit theme and branding
+
+Tracing and evaluation
+
+- Golden dataset: `eval/golden_dataset.json` contains the first 5 evaluation questions using the real schema. 
+- Optional LangSmith tracing: set `LANGSMITH_API_KEY` in your `.env` to enable tracing.

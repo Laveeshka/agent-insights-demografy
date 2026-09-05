@@ -2,6 +2,7 @@
 
 import os
 import re
+import logging
 
 from langchain_google_genai import ChatGoogleGenerativeAI
 from dotenv import load_dotenv
@@ -18,6 +19,7 @@ from agent.tools import (
     limit_query_results,
     validate_read_only_sql,
 )
+from eval.tracing import get_tracer
 
 
 class SQLAgent:
@@ -37,6 +39,7 @@ class SQLAgent:
         # Inject dependencies so this class does not create connections itself.
         self.bigquery_client = bigquery_client
         self.llm = llm
+        self.tracer = get_tracer()
 
     def answer_question(self, question: str) -> dict:
         """Execute one bounded SQL-generation flow and return a UI-safe result."""
@@ -51,6 +54,7 @@ class SQLAgent:
         schema = self._get_schema()
         schema_context = get_schema_context(schema, self.TABLE_NAME)
         sql = None
+        error = ""
 
         # Allow one repair attempt, but never retry indefinitely.
         for attempt in range(2):
@@ -66,6 +70,13 @@ class SQLAgent:
                 result["error"] = f"SQL generation failed: {exc}"
                 result["sql"] = sql
                 return result
+
+            # Trace SQL-generation result (only when tracer enabled)
+            if getattr(self.tracer, "enabled", False):
+                try:
+                    self.tracer.record("sql_generation", {"question": question, "sql": sql})
+                except Exception as exc:
+                    logging.debug("Tracer record failed (sql_generation): %s", exc, exc_info=True)
 
             # Reject unsafe SQL before it can reach BigQuery.
             sql = self._enforce_row_limit(sql)
@@ -100,11 +111,27 @@ class SQLAgent:
             formatted_rows = format_query_results(limited_rows)
             result["rows"] = self._serializable_rows(limited_rows)
             result["sql"] = sql
+            # Trace query results (only when tracer enabled)
+            if getattr(self.tracer, "enabled", False):
+                try:
+                    self.tracer.record("query_result", {"sql": sql, "rows": result["rows"]})
+                except Exception as exc:
+                    logging.debug("Tracer record failed (query_result): %s", exc, exc_info=True)
             # Generate the final answer from actual query results, not guesses.
             try:
                 result["answer"] = self._invoke(
                     self._build_answer_prompt(question, formatted_rows)
                 )
+                if getattr(self.tracer, "enabled", False):
+                    try:
+                        self.tracer.record(
+                            "answer_generation",
+                            {"question": question, "answer": result["answer"]},
+                        )
+                    except Exception as exc:
+                        logging.debug(
+                            "Tracer record failed (answer_generation): %s", exc, exc_info=True
+                        )
             except Exception as exc:
                 result["error"] = f"Answer generation failed: {exc}"
             return result
