@@ -1,0 +1,33 @@
+[
+  {
+    "id": 1,
+    "question": "Top 3 suburbs in VIC by diversity index",
+    "expected_sql_pattern": "SELECT sa2_name, kpi_2_val ... WHERE state='Victoria' ORDER BY kpi_2_val DESC LIMIT 3",
+    "validation": "Exact sa2_name match"
+  }
+  ,
+  {
+    "id": 2,
+    "question": "Average prosperity score in New South Wales",
+    "expected_sql_pattern": "AVG(kpi_1_val) WHERE state='New South Wales",
+    "validation": "Within 1% tolerance"
+  },
+  {
+    "id": 3,
+    "question": "Which state has the highest average learning level?",
+    "expected_sql_pattern": "AVG(kpi_4_val) GROUP BY state ORDER BY DESC LIMIT 1",
+    "validation": "Exact state match"
+  },
+  {
+    "id": 4,
+    "question": "Suburbs with social housing above 20%",
+    "expected_sql_pattern": "WHERE kpi_5_val > 20",
+    "validation": "Row count + sample"
+  },
+  {
+    "id": 5,
+    "question": "Most affordable rental suburbs in QLD",
+    "expected_sql_pattern": "kpi_7_val ... WHERE state='Queensland'",
+    "validation": "Correct ordering"
+  }
+]

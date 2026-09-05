@@ -14,7 +14,6 @@ venv/
 .streamlit/secrets.toml
 
 # BigQuery service account
-*.json
 *.key
 *.pem
 *.p12
