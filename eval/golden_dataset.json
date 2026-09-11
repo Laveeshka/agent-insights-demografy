@@ -2,32 +2,64 @@
   {
     "id": 1,
     "question": "Top 3 suburbs in VIC by diversity index",
-    "expected_sql_pattern": "SELECT sa2_name, kpi_2_val ... WHERE state='Victoria' ORDER BY kpi_2_val DESC LIMIT 3",
-    "validation": "Exact sa2_name match"
-  }
-  ,
+    "expected_sql": "SELECT sa2_name AS suburb, kpi_2_val AS diversity_index FROM `demografy.prod_tables.a_master_view` WHERE state = 'Victoria' AND sa2_name IS NOT NULL AND kpi_2_val IS NOT NULL AND sa2_name NOT LIKE 'Migratory%' AND sa2_name NOT LIKE 'No usual address%' AND population > 1000 ORDER BY diversity_index DESC LIMIT 3;",
+    "validation_type": "exact_match"
+  },
   {
     "id": 2,
     "question": "Average prosperity score in New South Wales",
-    "expected_sql_pattern": "AVG(kpi_1_val) WHERE state='New South Wales",
-    "validation": "Within 1% tolerance"
+    "expected_sql": "SELECT AVG(kpi_1_val) AS avg_prosperity_score FROM `demografy.prod_tables.a_master_view` WHERE state = 'New South Wales' AND sa2_name NOT LIKE 'Migratory%' AND sa2_name NOT LIKE 'No usual address%' AND population > 1000;",
+    "validation_type": "tolerance",
+    "tolerance_pct": 1.0
   },
   {
     "id": 3,
     "question": "Which state has the highest average learning level?",
-    "expected_sql_pattern": "AVG(kpi_4_val) GROUP BY state ORDER BY DESC LIMIT 1",
-    "validation": "Exact state match"
+    "expected_sql": "SELECT state AS state_name, AVG(kpi_4_val) AS avg_learning_level FROM `demografy.prod_tables.a_master_view` WHERE state IS NOT NULL AND sa2_name NOT LIKE 'Migratory%' AND sa2_name NOT LIKE 'No usual address%' AND population > 1000 GROUP BY state HAVING avg_learning_level IS NOT NULL ORDER BY avg_learning_level DESC LIMIT 1;",
+    "validation_type": "state_match"
   },
   {
     "id": 4,
     "question": "Suburbs with social housing above 20%",
-    "expected_sql_pattern": "WHERE kpi_5_val > 20",
-    "validation": "Row count + sample"
+    "expected_sql": "SELECT sa2_name AS suburb, state AS state_name, kpi_5_val AS social_housing_pct FROM `demografy.prod_tables.a_master_view` WHERE kpi_5_val > 20 AND sa2_name NOT LIKE 'Migratory%' AND sa2_name NOT LIKE 'No usual address%' AND population > 1000 ORDER BY social_housing_pct DESC LIMIT 50;",
+    "validation_type": "row_count"
   },
   {
     "id": 5,
     "question": "Most affordable rental suburbs in QLD",
-    "expected_sql_pattern": "kpi_7_val ... WHERE state='Queensland'",
-    "validation": "Correct ordering"
+    "expected_sql": "SELECT sa2_name AS suburb, kpi_7_val AS rental_access FROM `demografy.prod_tables.a_master_view` WHERE state = 'Queensland' AND kpi_7_val IS NOT NULL AND sa2_name NOT LIKE 'Migratory%' AND sa2_name NOT LIKE 'No usual address%' AND population > 1000 ORDER BY rental_access DESC LIMIT 10;",
+    "validation_type": "ordering"
+  },
+  {
+    "id": 6,
+    "question": "Top 5 suburbs in New South Wales by migration footprint",
+    "expected_sql": "SELECT sa2_name AS suburb, kpi_3_val AS migration_footprint FROM `demografy.prod_tables.a_master_view` WHERE state = 'New South Wales' AND kpi_3_val IS NOT NULL AND sa2_name NOT LIKE 'Migratory%' AND sa2_name NOT LIKE 'No usual address%' AND population > 1000 ORDER BY migration_footprint DESC LIMIT 5;",
+    "validation_type": "exact_match"
+  },
+  {
+    "id": 7,
+    "question": "Average resident equity (home ownership) in Western Australia",
+    "expected_sql": "SELECT AVG(kpi_6_val) AS avg_resident_equity FROM `demografy.prod_tables.a_master_view` WHERE state = 'Western Australia' AND sa2_name NOT LIKE 'Migratory%' AND sa2_name NOT LIKE 'No usual address%' AND population > 1000;",
+    "validation_type": "tolerance",
+    "tolerance_pct": 1.0
+  },
+  {
+    "id": 8,
+    "question": "Which state has the lowest average household mobility potential?",
+    "expected_sql": "SELECT state AS state_name, AVG(kpi_9_val) AS avg_household_mobility FROM `demografy.prod_tables.a_master_view` WHERE state IS NOT NULL AND sa2_name NOT LIKE 'Migratory%' AND sa2_name NOT LIKE 'No usual address%' AND population > 1000 GROUP BY state HAVING avg_household_mobility IS NOT NULL ORDER BY avg_household_mobility ASC LIMIT 1;",
+    "validation_type": "state_match"
+  },
+  {
+    "id": 9,
+    "question": "How many suburbs have a young family indicator above 25%?",
+    "expected_sql": "SELECT COUNT(*) AS suburb_count FROM `demografy.prod_tables.a_master_view` WHERE kpi_10_val > 25 AND sa2_name NOT LIKE 'Migratory%' AND sa2_name NOT LIKE 'No usual address%' AND population > 1000;",
+    "validation_type": "tolerance",
+    "tolerance_pct": 0
+  },
+  {
+    "id": 10,
+    "question": "Top 3 most stable suburbs (highest resident anchor) in Tasmania",
+    "expected_sql": "SELECT sa2_name AS suburb, kpi_8_val AS resident_anchor FROM `demografy.prod_tables.a_master_view` WHERE state = 'Tasmania' AND kpi_8_val IS NOT NULL AND sa2_name NOT LIKE 'Migratory%' AND sa2_name NOT LIKE 'No usual address%' AND population > 1000 ORDER BY resident_anchor DESC LIMIT 3;",
+    "validation_type": "exact_match"
   }
 ]
