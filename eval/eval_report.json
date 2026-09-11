@@ -1,0 +1,213 @@
+{
+  "summary": {
+    "total": 10,
+    "passed": 10,
+    "accuracy_pct": 100.0,
+    "avg_judge_score": 4.9,
+    "judge_scored_count": 10,
+    "judge_fallback_count": 0,
+    "judge_fallback_question_ids": []
+  },
+  "results": [
+    {
+      "id": 1,
+      "question": "Top 3 suburbs in VIC by diversity index",
+      "validation_type": "exact_match",
+      "latency_s": 7.36,
+      "actual_sql": "SELECT\n\tsa2_name AS suburb,\n\tstate AS state_name,\n\tkpi_2_val AS diversity_index\nFROM\n\t`demografy.prod_tables.a_master_view`\nWHERE\n\tstate = 'Victoria'\n\tAND sa2_name IS NOT NULL\n\tAND kpi_2_val IS NOT NULL\n\tAND sa2_name NOT LIKE 'Migratory%'\n\tAND sa2_name NOT LIKE 'No usual address%'\n\tAND population > 1000\nORDER BY\n\tdiversity_index DESC\nLIMIT 3;",
+      "passed": true,
+      "detail": "identifier sets must match exactly",
+      "expected": [
+        "Delahey",
+        "Keilor Downs",
+        "St Albans - North"
+      ],
+      "actual": [
+        "Delahey",
+        "Keilor Downs",
+        "St Albans - North"
+      ],
+      "actual_answer": "1. Keilor Downs: 0.8806297457260462\n2. Delahey: 0.8702548022332224\n3. St Albans - North: 0.8680890133365682",
+      "judge_score": 5,
+      "judge_rationale": "The candidate answer perfectly matches the ground truth data for the top 3 suburbs in VIC by diversity index, including correct names and exact numerical values.",
+      "judge_status": "scored"
+    },
+    {
+      "id": 2,
+      "question": "Average prosperity score in New South Wales",
+      "validation_type": "tolerance",
+      "latency_s": 5.49,
+      "actual_sql": "SELECT\n\tAVG(kpi_1_val) AS avg_prosperity_score\nFROM\n\t`demografy.prod_tables.a_master_view`\nWHERE\n\tstate = 'New South Wales'\n\tAND sa2_name NOT LIKE 'Migratory%'\n\tAND sa2_name NOT LIKE 'No usual address%'\n\tAND population > 1000\nLIMIT 50;",
+      "passed": true,
+      "detail": "|expected - actual| must be <= 1.0",
+      "expected": 25.395501542454653,
+      "actual": 25.395501542454653,
+      "actual_answer": "The average prosperity score in New South Wales is 25.395501542454653.",
+      "judge_score": 5,
+      "judge_rationale": "The candidate answer perfectly matches the ground truth data with no errors.",
+      "judge_status": "scored"
+    },
+    {
+      "id": 3,
+      "question": "Which state has the highest average learning level?",
+      "validation_type": "state_match",
+      "latency_s": 5.66,
+      "actual_sql": "SELECT\n\tstate AS state_name,\n\tAVG(kpi_4_val) AS avg_learning_level\nFROM\n\t`demografy.prod_tables.a_master_view`\nWHERE\n\tstate IS NOT NULL\n\tAND sa2_name NOT LIKE 'Migratory%'\n\tAND sa2_name NOT LIKE 'No usual address%'\n\tAND population > 1000\nGROUP BY\n\tstate\nHAVING\n\tavg_learning_level IS NOT NULL\nORDER BY\n\tavg_learning_level DESC\nLIMIT 1;",
+      "passed": true,
+      "detail": "top identifier must match",
+      "expected": "Australian Capital Territory",
+      "actual": "Australian Capital Territory",
+      "actual_answer": "Australian Capital Territory has the highest average learning level with 60.67.",
+      "judge_score": 5,
+      "judge_rationale": "The candidate answer correctly identifies the Australian Capital Territory as having the highest average learning level and accurately cites the rounded value from the ground truth data.",
+      "judge_status": "scored"
+    },
+    {
+      "id": 4,
+      "question": "Suburbs with social housing above 20%",
+      "validation_type": "row_count",
+      "latency_s": 8.85,
+      "actual_sql": "SELECT\n\tsa2_name AS suburb,\n\tstate AS state_name,\n\tpopulation AS total_population,\n\tkpi_5_val AS social_housing_pct\nFROM\n\t`demografy.prod_tables.a_master_view`\nWHERE\n\tkpi_5_val > 20\n\tAND sa2_name NOT LIKE 'Migratory%'\n\tAND sa2_name NOT LIKE 'No usual address%'\n\tAND population > 1000\nORDER BY\n\tsocial_housing_pct DESC\nLIMIT 50;",
+      "passed": true,
+      "detail": "row counts within 5 and >=60% identifier overlap",
+      "expected": "50 rows",
+      "actual": "50 rows (100% overlap with ground truth)",
+      "actual_answer": "Based on the database results, here are the suburbs with social housing above 20%:\n\n- Palm Island, Queensland (Total population: 2,098, Social housing: 88.19%)\n- Aurukun, Queensland (Total population: 1,101, Social housing: 86.02%)\n- Torres Strait Islands, Queensland (Total population: 4,124, Social housing: 83.51%)\n- Northern Peninsula, Queensland (Total population: 2,781, Social housing: 79.50%)\n- Yarrabah, Queensland (Total population: 2,505, Social housing: 76.75%)\n- Tiwi Islands, Northern Territory (Total population: 2,348, Social housing: 74.67%)\n- Kowanyama - Pormpuraaw, Queensland (Total population: 1,691, Social housing: 73.37%)\n- West Arnhem, Northern Territory (Total population: 5,204, Social housing: 72.37%)\n- Thamarrurr, Northern Territory (Total population: 2,118, Social housing: 67.92%)\n- East Arnhem, Northern Territory (Total population: 6,983, Social housing: 67.10%)\n- APY Lands, South Australia (Total population: 2,333, Social housing: 66.54%)\n- Gulf, Northern Territory (Total population: 4,189, Social housing: 64.83%)\n- Yuendumu - Anmatjere, Northern Territory (Total population: 1,851, Social housing: 63.93%)\n- Halls Creek, Western Australia (Total population: 3,603, Social housing: 63.92%)\n- Victoria River, Northern Territory (Total population: 2,609, Social housing: 63.85%)\n- Tanami, Northern Territory (Total population: 2,839, Social housing: 61.88%)\n- Roebuck, Western Australia (Total population: 2,310, Social housing: 55.00%)\n- Sandover - Plenty, Northern Territory (Total population: 3,912, Social housing: 54.45%)\n- Elsey, Northern Territory (Total population: 2,283, Social housing: 52.62%)\n- Derby - West Kimberley, Western Australia (Total population: 7,045, Social housing: 51.85%)\n- East Pilbara, Western Australia (Total population: 5,910, Social housing: 51.72%)\n- Anindilyakwa, Northern Territory (Total population: 2,541, Social housing: 51.27%)\n- Barkly, Northern Territory (Total population: 2,203, Social housing: 47.73%)\n- Carpentaria, Queensland (Total population: 4,921, Social housing: 46.32%)\n- Daly, Northern Territory (Total population: 1,890, Social housing: 44.76%)\n- Leinster - Leonora, Western Australia (Total population: 4,804, Social housing: 40.88%)\n- Torres, Queensland (Total population: 3,421, Social housing: 37.05%)\n- Cape York, Queensland (Total population: 7,803, Social housing: 34.19%)\n- Bridgewater - Gagebrook, Tasmania (Total population: 8,150, Social housing: 33.67%)\n- Ashcroft - Busby - Miller, New South Wales (Total population: 17,962, Social housing: 32.05%)\n- South Coogee, New South Wales (Total population: 5,611, Social housing: 29.60%)\n- Tennant Creek, Northern Territory (Total population: 3,080, Social housing: 29.06%)\n- Riverwood, New South Wales (Total population: 11,606, Social housing: 28.85%)\n- Ravenswood, Tasmania (Total population: 3,804, Social housing: 27.74%)\n- Bidwill - Hebersham - Emerton, New South Wales (Total population: 18,536, Social housing: 27.55%)\n- Petermann - Simpson, Northern Territory (Total population: 1,961, Social housing: 27.37%)\n- Kununurra, Western Australia (Total population: 7,477, Social housing: 27.10%)\n- Wacol, Queensland (Total population: 6,220, Social housing: 26.92%)\n- Mount Hutton - Windale, New South Wales (Total population: 9,504, Social housing: 25.75%)\n- Elizabeth, South Australia (Total population: 10,829, Social housing: 25.05%)\n- Lethbridge Park - Tregear, New South Wales (Total population: 21,551, Social housing: 22.56%)\n- Moulden, Northern Territory (Total population: 3,053, Social housing: 22.21%)\n- Inala - Richlands, Queensland (Total population: 19,891, Social housing: 21.69%)\n- Lurnea - Cartwright, New South Wales (Total population: 12,670, Social housing: 21.60%)\n- Christmas Island, Other Territories (Total population: 1,692, Social housing: 21.56%)\n- Waterloo, New South Wales (Total population: 16,379, Social housing: 21.34%)\n- Christie Downs, South Australia (Total population: 9,475, Social housing: 21.21%)\n- Macquarie Fields, New South Wales (Total population: 14,198, Social housing: 20.59%)\n- Riverview, Queensland (Total population: 3,067, Social housing: 20.43%)\n- Maroubra - South, New South Wales (Total population: 11,084, Social housing: 20.15%)\n\nNote: Results are capped at 50. Please narrow your query with filters if you require more specific results.",
+      "judge_score": 4,
+      "judge_rationale": "The candidate correctly identifies the top suburbs matching the criteria and formats them well, but includes extra information (total population) not requested and truncates the list at 50 results due to a self-imposed cap.",
+      "judge_status": "scored"
+    },
+    {
+      "id": 5,
+      "question": "Most affordable rental suburbs in QLD",
+      "validation_type": "ordering",
+      "latency_s": 5.89,
+      "actual_sql": "SELECT\n\tsa2_name AS suburb,\n\tstate AS state_name,\n\tkpi_7_val AS rental_access\nFROM\n\t`demografy.prod_tables.a_master_view`\nWHERE\n\tstate = 'Queensland'\n\tAND sa2_name NOT LIKE 'Migratory%'\n\tAND sa2_name NOT LIKE 'No usual address%'\n\tAND population > 1000\n\tAND kpi_7_val IS NOT NULL\nORDER BY\n\trental_access DESC\nLIMIT 10;",
+      "passed": true,
+      "detail": "relative order of overlapping identifiers must match",
+      "expected": [
+        "Stanthorpe",
+        "Redbank Plains",
+        "Leichhardt - One Mile",
+        "Park Avenue",
+        "Collingwood Park - Redbank",
+        "Kilkivan",
+        "Southern Moreton Bay Islands",
+        "Deeragun - Jensen",
+        "Brassall",
+        "Morayfield - East"
+      ],
+      "actual": [
+        "Stanthorpe",
+        "Redbank Plains",
+        "Leichhardt - One Mile",
+        "Park Avenue",
+        "Collingwood Park - Redbank",
+        "Kilkivan",
+        "Southern Moreton Bay Islands",
+        "Deeragun - Jensen",
+        "Brassall",
+        "Morayfield - East"
+      ],
+      "actual_answer": "The most affordable rental suburbs in Queensland, based on rental access, are:\n\n1. Stanthorpe (97.47%)\n2. Redbank Plains (95.91%)\n3. Leichhardt - One Mile (95.54%)\n4. Park Avenue (95.49%)\n5. Collingwood Park - Redbank (95.40%)\n6. Kilkivan (95.22%)\n7. Southern Moreton Bay Islands (95.02%)\n8. Deeragun - Jensen (94.77%)\n9. Brassall (94.64%)\n10. Morayfield - East (94.61%)",
+      "judge_score": 5,
+      "judge_rationale": "The candidate answer perfectly matches all the suburbs and rounded rental access percentages from the ground truth data.",
+      "judge_status": "scored"
+    },
+    {
+      "id": 6,
+      "question": "Top 5 suburbs in New South Wales by migration footprint",
+      "validation_type": "exact_match",
+      "latency_s": 5.7,
+      "actual_sql": "SELECT\n\tsa2_name AS suburb,\n\tstate AS state_name,\n\tkpi_3_val AS migration_footprint\nFROM\n\t`demografy.prod_tables.a_master_view`\nWHERE\n\tstate = 'New South Wales'\n\tAND sa2_name IS NOT NULL\n\tAND kpi_3_val IS NOT NULL\n\tAND sa2_name NOT LIKE 'Migratory%'\n\tAND sa2_name NOT LIKE 'No usual address%'\n\tAND population > 1000\nORDER BY\n\tmigration_footprint DESC\nLIMIT 5;",
+      "passed": true,
+      "detail": "identifier sets must match exactly",
+      "expected": [
+        "Auburn - North",
+        "Hurstville - Central",
+        "Lidcombe",
+        "Rhodes",
+        "St Johns Park - Wakeley"
+      ],
+      "actual": [
+        "Auburn - North",
+        "Hurstville - Central",
+        "Lidcombe",
+        "Rhodes",
+        "St Johns Park - Wakeley"
+      ],
+      "actual_answer": "1. Auburn - North (Migration Footprint: 91.23)\n2. Hurstville - Central (Migration Footprint: 90.67)\n3. Rhodes (Migration Footprint: 89.48)\n4. St Johns Park - Wakeley (Migration Footprint: 89.25)\n5. Lidcombe (Migration Footprint: 88.85)",
+      "judge_score": 5,
+      "judge_rationale": "The candidate answer correctly lists the top 5 suburbs in New South Wales by migration footprint with accurate data, appropriately rounded for readability.",
+      "judge_status": "scored"
+    },
+    {
+      "id": 7,
+      "question": "Average resident equity (home ownership) in Western Australia",
+      "validation_type": "tolerance",
+      "latency_s": 5.12,
+      "actual_sql": "SELECT\n\tAVG(kpi_6_val) AS avg_resident_equity\nFROM\n\t`demografy.prod_tables.a_master_view`\nWHERE\n\tstate = 'Western Australia'\n\tAND sa2_name NOT LIKE 'Migratory%'\n\tAND sa2_name NOT LIKE 'No usual address%'\n\tAND population > 1000\nLIMIT 50;",
+      "passed": true,
+      "detail": "|expected - actual| must be <= 1.0",
+      "expected": 68.94954267555245,
+      "actual": 68.94954267555245,
+      "actual_answer": "The average resident equity (home ownership) in Western Australia is 68.95%.",
+      "judge_score": 5,
+      "judge_rationale": "The candidate answer accurately matches the ground truth data, correctly rounding the percentage to two decimal places.",
+      "judge_status": "scored"
+    },
+    {
+      "id": 8,
+      "question": "Which state has the lowest average household mobility potential?",
+      "validation_type": "state_match",
+      "latency_s": 7.99,
+      "actual_sql": "SELECT\n\tstate AS state_name,\n\tAVG(kpi_9_val) AS avg_household_mobility\nFROM\n\t`demografy.prod_tables.a_master_view`\nWHERE\n\tstate IS NOT NULL\n\tAND sa2_name NOT LIKE 'Migratory%'\n\tAND sa2_name NOT LIKE 'No usual address%'\n\tAND population > 1000\nGROUP BY\n\tstate\nHAVING\n\tavg_household_mobility IS NOT NULL\nORDER BY\n\tavg_household_mobility ASC\nLIMIT 1;",
+      "passed": true,
+      "detail": "top identifier must match",
+      "expected": "Northern Territory",
+      "actual": "Northern Territory",
+      "actual_answer": "Northern Territory has the lowest average household mobility potential, with an average of 46.37.",
+      "judge_score": 5,
+      "judge_rationale": "The candidate answer correctly identifies the Northern Territory as having the lowest average household mobility potential and accurately reports the rounded figure from the ground truth data.",
+      "judge_status": "scored"
+    },
+    {
+      "id": 9,
+      "question": "How many suburbs have a young family indicator above 25%?",
+      "validation_type": "tolerance",
+      "latency_s": 19.33,
+      "actual_sql": "SELECT\n\tCOUNT(sa2_name) AS suburb_count\nFROM\n\t`demografy.prod_tables.a_master_view`\nWHERE\n\tkpi_10_val > 25\n\tAND sa2_name NOT LIKE 'Migratory%'\n\tAND sa2_name NOT LIKE 'No usual address%'\n\tAND population > 1000\nLIMIT 50;",
+      "passed": true,
+      "detail": "|expected - actual| must be <= 0",
+      "expected": 138.0,
+      "actual": 138.0,
+      "actual_answer": "There are 138 suburbs with a young family indicator above 25%.",
+      "judge_score": 5,
+      "judge_rationale": "The candidate answer perfectly matches the ground truth data by correctly identifying 138 suburbs.",
+      "judge_status": "scored"
+    },
+    {
+      "id": 10,
+      "question": "Top 3 most stable suburbs (highest resident anchor) in Tasmania",
+      "validation_type": "exact_match",
+      "latency_s": 24.26,
+      "actual_sql": "SELECT\n\tsa2_name AS suburb,\n\tkpi_8_val AS resident_anchor\nFROM\n\t`demografy.prod_tables.a_master_view`\nWHERE\n\tstate = 'Tasmania'\n\tAND sa2_name NOT LIKE 'Migratory%'\n\tAND sa2_name NOT LIKE 'No usual address%'\n\tAND population > 1000\nORDER BY\n\tresident_anchor DESC\nLIMIT 3;",
+      "passed": true,
+      "detail": "identifier sets must match exactly",
+      "expected": [
+        "Cambridge",
+        "South Arm",
+        "Taroona - Bonnet Hill"
+      ],
+      "actual": [
+        "Cambridge",
+        "South Arm",
+        "Taroona - Bonnet Hill"
+      ],
+      "actual_answer": "1. Taroona - Bonnet Hill (Resident anchor: 68.13)\n2. South Arm (Resident anchor: 66.76)\n3. Cambridge (Resident anchor: 66.39)",
+      "judge_score": 5,
+      "judge_rationale": "The candidate answer accurately lists the top three suburbs with their correct resident anchor values, matching the ground truth data with appropriate rounding.",
+      "judge_status": "scored"
+    }
+  ]
+}
