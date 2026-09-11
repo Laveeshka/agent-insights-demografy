@@ -6,3 +6,4 @@ langchain-google-genai
 langchain-community
 sqlalchemy-bigquery
 python-dotenv
+langsmith

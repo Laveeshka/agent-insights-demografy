@@ -1,95 +1,97 @@
-"""LangSmith tracer that is enabled only when tracing is explicitly opted-in.
+"""LangSmith tracing, enabled only when explicitly opted in via env vars.
 
-Behavior:
-- If `LANGCHAIN_TRACING_V2` is not set to a truthy value, returns a no-op tracer.
-- If the LangSmith SDK or API key is missing, returns a no-op tracer.
-- Otherwise constructs a thin tracer that forwards `record(event, payload)` to the
-  LangSmith client using a few common call shapes.
-
-This keeps imports safe and ensures tracing is opt-in via env.
+Set ``LANGCHAIN_TRACING_V2=true`` plus ``LANGSMITH_API_KEY`` (or the legacy
+``LANGCHAIN_API_KEY``) to send events to LangSmith. Missing the SDK, the
+opt-in flag, or the API key all resolve to a no-op tracer so callers never
+need to branch on whether tracing is active.
 """
-from typing import Any, Dict, Optional
+from __future__ import annotations
+
+import datetime
+import logging
 import os
+import uuid
+from typing import Any, Optional
+
 try:
-    import langsmith
-except Exception:
-    langsmith = None
+    from langsmith import Client
+except ImportError:
+    Client = None  # type: ignore[assignment,misc]
 
-class _NoopTracer:
-    enabled = False
+logger = logging.getLogger(__name__)
 
-    def record(self, event: str, payload: Dict[str, Any]) -> Optional[Any]:
-        return None
-
-
-class _Tracer:
-    def __init__(self, client: Any):
-        self.client = client
-        self.enabled = True
-
-    def record(self, event: str, payload: Dict[str, Any]) -> Optional[Any]:
-        # Build an ordered list of callables to attempt.  
-        attempts = []
-
-        if hasattr(self.client, "create_trace"):
-            attempts.append(lambda: self.client.create_trace(name=event, data=payload))
-
-        if hasattr(self.client, "log"):
-            attempts.append(lambda: self.client.log(event, payload))
-
-        if hasattr(self.client, "create_run"):
-            # Try common create_run call shapes (keyword and positional).
-            attempts.append(lambda: self.client.create_run(name=event, inputs=payload, run_type="tool"))
-            attempts.append(lambda: self.client.create_run(event, payload, "tool"))
-
-        if hasattr(self.client, "create"):
-            attempts.append(lambda: self.client.create(name=event, data=payload))
-            attempts.append(lambda: self.client.create(event, payload))
-
-        for fn in attempts:
-            try:
-                return fn()
-            except Exception:
-                # Ignore and try the next candidate; tracing is best-effort.
-                continue
-
-        return None
+_TRUTHY = {"1", "true", "yes", "on"}
 
 
 def _is_truthy(value: Optional[str]) -> bool:
-    if not value:
-        return False
-    return True
+    return (value or "").strip().lower() in _TRUTHY
 
 
-def get_tracer():
-    # Opt-in check: require LANGCHAIN_TRACING_V2 to be truthy
-    if not _is_truthy(os.environ.get("LANGCHAIN_TRACING_V2", "")):
-        return _NoopTracer()
+class Tracer:
+    """Base tracer interface. ``enabled`` lets callers skip work cheaply."""
 
-    # LangSmith SDK required
-    if langsmith is None:
-        return _NoopTracer()
+    enabled = False
 
-    key = os.environ.get("LANGSMITH_API_KEY") or os.environ.get("LANGCHAIN_API_KEY")
-    if not key:
-        return _NoopTracer()
+    def record(self, event: str, payload: dict[str, Any]) -> None:
+        raise NotImplementedError
 
-    Client = getattr(langsmith, "Client", None)
-    if Client is None:
-        return _NoopTracer()
 
-    # Try common constructor patterns
-    client = None
-    try:
+class _NoopTracer(Tracer):
+    enabled = False
+
+    def record(self, event: str, payload: dict[str, Any]) -> None:
+        return None
+
+
+class _LangSmithTracer(Tracer):
+    enabled = True
+
+    def __init__(self, client: "Client", project_name: Optional[str]):
+        self._client = client
+        self._project_name = project_name
+
+    def record(self, event: str, payload: dict[str, Any]) -> None:
+        """Log a completed, instantaneous run. Best-effort: never raises."""
+        now = datetime.datetime.now(datetime.timezone.utc)
         try:
-            client = Client(api_key=key)
+            self._client.create_run(
+                id=uuid.uuid4(),
+                name=event,
+                run_type="tool",
+                inputs=payload,
+                start_time=now,
+                end_time=now,
+                project_name=self._project_name,
+            )
         except Exception:
-            client = Client(key)
-    except Exception:
-        client = None
+            logger.warning("LangSmith trace for %r failed", event, exc_info=True)
 
-    if client is None:
+
+def get_tracer() -> Tracer:
+    """Build a tracer from env vars, falling back to a no-op tracer."""
+    if not _is_truthy(os.environ.get("LANGCHAIN_TRACING_V2")):
         return _NoopTracer()
 
-    return _Tracer(client)
+    if Client is None:
+        logger.warning(
+            "LANGCHAIN_TRACING_V2 is set but the `langsmith` package is not installed."
+        )
+        return _NoopTracer()
+
+    api_key = os.environ.get("LANGSMITH_API_KEY") or os.environ.get("LANGCHAIN_API_KEY")
+    if not api_key:
+        logger.warning(
+            "LANGCHAIN_TRACING_V2 is set but no LANGSMITH_API_KEY/LANGCHAIN_API_KEY was found."
+        )
+        return _NoopTracer()
+
+    api_url = os.environ.get("LANGSMITH_ENDPOINT") or os.environ.get("LANGCHAIN_ENDPOINT")
+    project_name = os.environ.get("LANGSMITH_PROJECT") or os.environ.get("LANGCHAIN_PROJECT")
+
+    try:
+        client = Client(api_key=api_key, api_url=api_url)
+    except Exception:
+        logger.warning("Failed to construct LangSmith client", exc_info=True)
+        return _NoopTracer()
+
+    return _LangSmithTracer(client, project_name)
