@@ -3,6 +3,7 @@
 import json
 import re
 from collections.abc import Iterable, Mapping
+from numbers import Number
 
 
 def get_schema_context(
@@ -219,6 +220,130 @@ def map_agent_result_to_message(result: dict) -> str:
         )
 
     return result.get("answer") or "No answer available."
+
+
+def has_chart_intent(question: str) -> bool:
+    """Return True when the user explicitly asks for a chart or visualization."""
+    return bool(
+        re.search(
+            r"\b(chart|plot|graph|visuali[sz]e|visuali[sz]ation|bar chart|line chart|line graph|scatter plot|scatter chart|pie chart)\b",
+            str(question or ""),
+            re.IGNORECASE,
+        )
+    )
+
+
+def build_chart_data(question: str, rows: list, llm=None) -> dict:
+    """Build minimal chart metadata from existing database rows only."""
+    requested = has_chart_intent(question)
+    chart = {
+        "requested": requested,
+        "enough_rows": False,
+        "chart_type": None,
+        "data": None,
+        "x": None,
+        "y": None,
+    }
+    if not requested or len(rows or []) < 3:
+        return chart
+
+    first_row = rows[0]
+    if not isinstance(first_row, Mapping):
+        return chart
+
+    columns = list(first_row.keys())
+    numeric_columns = [
+        column
+        for column in columns
+        if isinstance(first_row.get(column), Number) and not isinstance(first_row.get(column), bool)
+    ]
+    text_columns = [column for column in columns if isinstance(first_row.get(column), str)]
+    time_columns = [
+        column
+        for column in columns
+        if re.search(r"\b(date|time|year|month|week|day)\b", str(column), re.IGNORECASE)
+    ]
+    x_column = text_columns[0] if text_columns else None
+    y_column = numeric_columns[0] if numeric_columns else None
+
+    requested_type = _requested_chart_type(question)
+    chart_type = requested_type
+    if chart_type == "pie":
+        chart_type = "bar"
+    if chart_type == "scatter" and len(numeric_columns) >= 2:
+        x_column = numeric_columns[0]
+        y_column = numeric_columns[1]
+    elif chart_type == "line" and time_columns and numeric_columns:
+        x_column = time_columns[0]
+        y_column = numeric_columns[0]
+    elif chart_type == "bar" and numeric_columns:
+        y_column = numeric_columns[0]
+    elif chart_type is None:
+        chart_type = _determine_chart_type(time_columns, text_columns, numeric_columns)
+        if chart_type is None and llm is not None:
+            chart_type = _llm_chart_type(llm, columns)
+        if chart_type == "scatter" and len(numeric_columns) >= 2:
+            x_column = numeric_columns[0]
+            y_column = numeric_columns[1]
+        elif chart_type == "line" and time_columns and numeric_columns:
+            x_column = time_columns[0]
+            y_column = numeric_columns[0]
+        elif chart_type == "bar" and numeric_columns:
+            y_column = numeric_columns[0]
+
+    if not chart_type or not y_column:
+        return chart
+
+    chart.update(
+        (
+            {
+                "enough_rows": True,
+                "chart_type": chart_type,
+                "data": rows,
+                "x": x_column,
+                "y": y_column,
+            }
+        )
+    )
+    return chart
+
+
+def _requested_chart_type(question: str) -> str | None:
+    text = str(question or "").lower()
+    if re.search(r"\bbar chart\b", text):
+        return "bar"
+    if re.search(r"\bline (chart|graph)\b", text):
+        return "line"
+    if re.search(r"\bscatter (plot|chart)\b", text):
+        return "scatter"
+    if re.search(r"\bpie chart\b", text):
+        return "pie"
+    return None
+
+
+def _determine_chart_type(time_columns: list, text_columns: list, numeric_columns: list) -> str | None:
+    if time_columns and numeric_columns:
+        return "line"
+    if len(numeric_columns) >= 2 and not text_columns:
+        return "scatter"
+    if text_columns and numeric_columns:
+        return "bar"
+    return None
+
+
+def _llm_chart_type(llm, columns: list) -> str | None:
+    prompt = (
+        "Choose one chart type for these result columns. "
+        "Allowed: bar, line, scatter. Return only one word.\n"
+        f"Columns: {', '.join(str(column) for column in columns)}"
+    )
+    try:
+        response = llm.invoke(prompt)
+    except Exception:
+        return None
+    content = getattr(response, "content", response)
+    text = str(content).strip().lower()
+    return text if text in {"bar", "line", "scatter"} else None
 
 
 def normalize_assistant_message(content: str) -> str:

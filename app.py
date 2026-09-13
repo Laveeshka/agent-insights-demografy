@@ -10,6 +10,7 @@ from auth.users import authenticate_user
 from db.bigquery_client import BigQueryClient
 from agent.sql_agent import create_demografy_agent
 from agent.tools import map_agent_result_to_message
+from agent.tools import build_chart_data
 
 # ---------------------------------------------------
 # PAGE CONFIGURATION
@@ -268,6 +269,17 @@ for message in st.session_state.messages:
     with st.chat_message(message["role"]):
 
         st.write(message["content"])
+        if message.get("chart"):
+            chart = message["chart"]
+            if chart["chart_type"] == "scatter":
+                st.scatter_chart(chart["data"], x=chart["x"], y=chart["y"])
+                st.dataframe(chart["data"])
+                continue
+            if chart["chart_type"] == "line":
+                st.line_chart(chart["data"], x=chart["x"], y=chart["y"])
+            else:
+                st.bar_chart(chart["data"], x=chart["x"], y=chart["y"])
+            st.dataframe(chart["data"])
 
 
 # ---------------------------------------------------
@@ -369,11 +381,31 @@ if user_question:
 
     # Map internal errors / empty results to human-friendly messages
     answer_text = map_agent_result_to_message(result)
+    chart = build_chart_data(user_question, result.get("rows") or [])
+    if chart["requested"] and not chart["enough_rows"] and len(result.get("rows") or []) >= 3:
+        chart = build_chart_data(user_question, result.get("rows") or [], llm=st.session_state.agent.llm)
+    if chart["requested"] and not chart["enough_rows"]:
+        answer_text = (
+            f"{answer_text}\n\n"
+            "Not enough returned data to create a useful chart."
+        )
 
     st.session_state.messages.append({"role": "assistant", "content": answer_text})
+    if chart["enough_rows"]:
+        st.session_state.messages[-1]["chart"] = chart
 
     with st.chat_message("assistant"):
         st.write(answer_text)
+        if chart["enough_rows"] and chart["chart_type"] == "scatter":
+            st.scatter_chart(chart["data"], x=chart["x"], y=chart["y"])
+            st.dataframe(chart["data"])
+            st.rerun()
+        if chart["enough_rows"]:
+            if chart["chart_type"] == "line":
+                st.line_chart(chart["data"], x=chart["x"], y=chart["y"])
+            else:
+                st.bar_chart(chart["data"], x=chart["x"], y=chart["y"])
+            st.dataframe(chart["data"])
 
     # Refresh the page so sidebar counter changes
     st.rerun()
