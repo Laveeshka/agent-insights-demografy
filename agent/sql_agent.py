@@ -184,10 +184,13 @@ class SQLAgent:
         return (
             "Answer the user using only the actual database result below. "
             "Do not invent values, preserve important numbers, state clearly "
-            "when no rows were returned, and be concise. Return text only, "
-            "with no charts, code blocks, or machine-readable JSON. If the "
-            "user requested more than 50 rows, explain that results are capped "
-            "at 50 and suggest narrowing the query with filters.\n\n"
+            "when no rows were returned, and be concise. Return prose only "
+            "-- no ASCII charts, code blocks, or raw JSON in your answer. "
+            "Whether a chart is shown is decided separately by the application "
+            "after your answer, so do not say whether you can or cannot create "
+            "a chart. If the user requested more than 50 rows, explain that "
+            "results are capped at 50 and suggest narrowing the query with "
+            "filters.\n\n"
             f"User question: {question}\n\nDatabase result:\n{formatted_rows}"
         )
 
