@@ -38,7 +38,7 @@ st.markdown(
 
     .subtitle {
         font-size: 17px;
-        color: #6B7280;
+        color: #ffffff;
         margin-bottom: 30px;
     }
 
@@ -46,8 +46,8 @@ st.markdown(
         display: inline-block;
         padding: 6px 12px;
         border-radius: 20px;
-        background-color: #7C3AED;
-        color: white;
+        background-color: #ffffff;
+        color: #5e17eb;
         font-size: 13px;
         font-weight: 600;
     }
@@ -55,24 +55,33 @@ st.markdown(
     .question-counter {
         padding: 14px;
         border-radius: 10px;
-        background-color: #F5F3FF;
+        background-color: #dbdddc;
+        color: #272d2d;
         margin-top: 10px;
         margin-bottom: 15px;
     }
-    
-/* Make Streamlit buttons clearly visible */
+
+/* Make Streamlit buttons clearly visible: white on the blue/black
+   backgrounds gives 7.5:1 and 14:1 contrast respectively */
 div.stButton > button {
-    background-color: #7C3AED;
-    color: white;
-    border: none;
+    background-color: #ffffff;
+    color: #5e17eb;
+    border: 2px solid #5e17eb;
     border-radius: 8px;
     padding: 0.5rem 1rem;
     font-weight: 600;
 }
 
-/* Make text input border visible */
+div.stButton > button:hover {
+    background-color: #5e17eb;
+    color: #ffffff;
+    border: 2px solid #ffffff;
+}
+
+/* Make text input border visible against both the blue main area
+   and the black sidebar */
 div[data-baseweb="input"] {
-    border: 1px solid #D1D5DB;
+    border: 2px solid #ffffff;
     border-radius: 8px;
 }
     </style>
@@ -103,7 +112,7 @@ if "questions_used" not in st.session_state:
 
 if not st.session_state.logged_in:
 
-    st.image("assets/logo.png", width=180)
+    st.image("assets/logo_neutral.png", width=180)
 
     st.write("Sign in to access demographic insights.")
 
