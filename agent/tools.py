@@ -234,7 +234,13 @@ def has_chart_intent(question: str) -> bool:
 
 
 def build_chart_data(question: str, rows: list, llm=None) -> dict:
-    """Build minimal chart metadata from existing database rows only."""
+    """Build minimal chart metadata from existing database rows only.
+
+    A chart is generated automatically whenever there are enough rows to make
+    one useful (5 or more) -- the user does not need to explicitly ask for a
+    chart or graph. ``requested`` is still tracked so the UI can explain when
+    an explicit chart request could not be satisfied.
+    """
     requested = has_chart_intent(question)
     chart = {
         "requested": requested,
@@ -244,7 +250,7 @@ def build_chart_data(question: str, rows: list, llm=None) -> dict:
         "x": None,
         "y": None,
     }
-    if not requested or len(rows or []) < 3:
+    if len(rows or []) < 5:
         return chart
 
     first_row = rows[0]

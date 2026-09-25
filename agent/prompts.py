@@ -19,10 +19,17 @@ KEY COLUMN MAPPINGS:
 - "resident equity" or "home ownership" = kpi_6_val (0-100%)
 - "rental access" or "affordability" = kpi_7_val (0-100%)
 - "resident anchor" or "stability" = kpi_8_val (0-100%)
-- "household mobility" = kpi_9_val (0-1)
+- "household mobility" = kpi_9_val (0-100%)
 - "young family" = kpi_10_val (0-100%)
 
-STATE ABBREVIATIONS:
+Every kpi_N_val column above also has a sibling kpi_N_ind column in the live schema. Never
+select or filter on a kpi_N_ind column: it is only an internal 0-1 normalization of the same
+kpi_N_val metric, not a separate metric, even though its name looks like it matches the word
+"indicator" in a question. A question using the word "indicator" (e.g. "the indicator for young
+families") still means the kpi_N_val column from the mapping above.
+
+STATE ABBREVIATIONS (map to the full name and use only the full name as the literal value in
+SQL -- never write the abbreviation itself, e.g. state = 'Victoria', not state = 'VIC'):
 - VIC = Victoria
 - SA = South Australia
 - TAS = Tasmania
@@ -42,6 +49,24 @@ DATA QUALITY RULES (apply to every query on this table):
   average X"), add HAVING <alias> IS NOT NULL before ORDER BY. Without it, a group with no
   matching rows produces a NULL average, and NULL sorts first in ascending order -- silently
   returning the wrong state for a "lowest average" question.
+
+COMPOSITE / BLENDED KPI RULES (apply when a question asks to combine, average, or blend two or
+more KPIs into a single score -- e.g. "average of X and Y", "combined score of X and Y",
+"blend/mix of X, Y, and Z" -- as opposed to a question that keeps each KPI as its own separate
+threshold, like "X above 25% AND Y above 70%", which stays two separate WHERE conditions):
+- Build the blend from the raw kpi_N_val columns as an equal-weighted average, e.g.
+  (kpi_A_val + kpi_B_val) / 2 for two KPIs, (kpi_A_val + kpi_B_val + kpi_C_val) / 3 for three --
+  unless the user explicitly gives different weights or asks for a sum/min/max instead of an
+  average.
+- Normalize scales before blending: every KPI is on a 0-100 scale except diversity index
+  (kpi_2_val), which is 0-1. Multiply kpi_2_val by 100 before combining it with any other KPI
+  (e.g. (kpi_2_val * 100 + kpi_6_val) / 2), otherwise the blend is meaningless.
+- Add `<col> IS NOT NULL` for every component column used in the blend. Arithmetic on a NULL
+  operand produces a NULL result in BigQuery, which would silently drop or mis-rank real rows.
+- BigQuery does not allow a SELECT-list alias inside WHERE, so repeat the full blended expression
+  in the WHERE clause; the alias may be used in ORDER BY.
+- Give the blended expression one descriptive alias (e.g. `blended_score`, `composite_score`) --
+  it still needs `AS <alias>` like every other selected expression.
 
 Rules: Always use fully qualified table names. Limit to 50 rows max. Use descriptive column aliases.
 Alias every selected expression using `AS <descriptive_name>` — every item in the outer SELECT list must include an `AS` alias. Never run DELETE, UPDATE, INSERT, or DROP.
@@ -114,6 +139,24 @@ WHERE
 ORDER BY
 	kpi_10_val DESC
 LIMIT 20;
+
+Q: Suburbs where the average of learning level and resident equity is above 75%
+SQL: SELECT
+	sa2_name AS suburb,
+	state AS state_name,
+	(kpi_4_val + kpi_6_val) / 2 AS blended_score
+FROM
+	`demografy.prod_tables.a_master_view`
+WHERE
+	kpi_4_val IS NOT NULL
+	AND kpi_6_val IS NOT NULL
+	AND (kpi_4_val + kpi_6_val) / 2 > 75
+	AND sa2_name NOT LIKE 'Migratory%'
+	AND sa2_name NOT LIKE 'No usual address%'
+	AND population > 1000
+ORDER BY
+	blended_score DESC
+LIMIT 50;
 
 Q: Most stable suburbs (highest resident anchor) in Queensland
 SQL: SELECT

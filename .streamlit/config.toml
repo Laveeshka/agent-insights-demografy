@@ -1,10 +1,10 @@
 # Demografy brand theme (see docs/4. Demografy Brand Guidelines.pdf)
-# Blue + neutral only, tuned for very high contrast:
-#   White text on Ultrasonic Blue (main area)  -> 7.51:1
-#   White text on Jet Black (sidebar)          -> 14.00:1
+# Neutral light + purple gradient direction (Centered Card design).
+# The .stApp background gradient is set per-screen in app.py; this is the
+# sensible flat fallback plus the widget chrome colours.
 [theme]
-primaryColor="#ffffff"
-backgroundColor="#5e17eb"
-secondaryBackgroundColor="#272d2d"
-textColor="#ffffff"
+primaryColor="#5e17eb"
+backgroundColor="#faf9fc"
+secondaryBackgroundColor="#dbdddc"
+textColor="#272d2d"
 font="sans serif"

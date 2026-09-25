@@ -190,7 +190,17 @@ class SQLAgent:
             "after your answer, so do not say whether you can or cannot create "
             "a chart. If the user requested more than 50 rows, explain that "
             "results are capped at 50 and suggest narrowing the query with "
-            "filters.\n\n"
+            "filters. For any KPI score in the database result (a demographic "
+            "indicator such as a diversity index, prosperity score, migration "
+            "footprint, learning level, social housing, resident equity, "
+            "rental access, resident anchor, household mobility, young "
+            "family value, or a blended/composite score combining multiple "
+            "KPIs -- not population counts or row/suburb counts), "
+            "express it as a percentage with a '%' sign, capped to exactly 2 "
+            "decimal places. If the raw value is a fraction between 0 and 1, "
+            "multiply it by 100 first; if it is already greater than 1, just "
+            "round it to 2 decimal places and append '%'. Never show a raw "
+            "unrounded decimal for a KPI score.\n\n"
             f"User question: {question}\n\nDatabase result:\n{formatted_rows}"
         )
 

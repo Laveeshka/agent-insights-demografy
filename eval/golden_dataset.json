@@ -61,5 +61,17 @@
     "question": "Top 3 most stable suburbs (highest resident anchor) in Tasmania",
     "expected_sql": "SELECT sa2_name AS suburb, kpi_8_val AS resident_anchor FROM `demografy.prod_tables.a_master_view` WHERE state = 'Tasmania' AND kpi_8_val IS NOT NULL AND sa2_name NOT LIKE 'Migratory%' AND sa2_name NOT LIKE 'No usual address%' AND population > 1000 ORDER BY resident_anchor DESC LIMIT 3;",
     "validation_type": "exact_match"
+  },
+  {
+    "id": 11,
+    "question": "Find suburbs where the indicator for young families is above 30%",
+    "expected_sql": "SELECT sa2_name AS suburb, state AS state_name, kpi_10_val AS young_family_pct FROM `demografy.prod_tables.a_master_view` WHERE kpi_10_val > 30 AND sa2_name NOT LIKE 'Migratory%' AND sa2_name NOT LIKE 'No usual address%' AND population > 1000 ORDER BY young_family_pct DESC LIMIT 50;",
+    "validation_type": "row_count"
+  },
+  {
+    "id": 12,
+    "question": "Suburbs where the average of learning level and resident equity is above 75%",
+    "expected_sql": "SELECT sa2_name AS suburb, state AS state_name, (kpi_4_val + kpi_6_val) / 2 AS blended_score FROM `demografy.prod_tables.a_master_view` WHERE kpi_4_val IS NOT NULL AND kpi_6_val IS NOT NULL AND (kpi_4_val + kpi_6_val) / 2 > 75 AND sa2_name NOT LIKE 'Migratory%' AND sa2_name NOT LIKE 'No usual address%' AND population > 1000 ORDER BY blended_score DESC LIMIT 50;",
+    "validation_type": "exact_match"
   }
 ]
